@@ -38,7 +38,7 @@ Cấu trúc file và giải thích cho từng folder
    └── requirements.txt      # Danh sách thư viện cần cài
 
  ```
-Thêm folder models vào backendend
+Thêm folder     ```models    ``` vào    ```backend   ```
 có dạng như sau
   ```
 
@@ -51,4 +51,4 @@ phi2_model lấy từ link
 
  https://huggingface.co/TheBloke/phi-2-GGUF/blob/main/phi-2.Q4_K_M.gguf
 
-đổi tên thành phi2_model.gguf và đưa vào folder models
+đổi tên thành    ``` phi2_model.gguf   ``` và đưa vào folder    ```models   ```
