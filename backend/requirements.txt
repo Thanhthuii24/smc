@@ -2,22 +2,18 @@
 fastapi==0.110.0
 uvicorn==0.29.0
 
-# Data processing
+# Data & validation
 pydantic==2.6.4
-pandas==2.1.4
+pandas==1.5.3         
 openpyxl==3.1.2
+python-dotenv==1.0.1
 
-# Whisper (Speech-to-Text)
+# STT
 faster-whisper==1.0.1
 
-# LLM - Llama Phi-2
+# LLM
 llama-cpp-python==0.2.24
 
-# TTS (Coqui TTS)
 TTS==0.22.0
-torch==2.1.2
-torchaudio==2.1.2
-numpy==1.26.4
 
-# Others
-python-dotenv==1.0.1
+numpy==1.22.0
