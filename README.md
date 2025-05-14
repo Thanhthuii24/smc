@@ -52,3 +52,18 @@ phi2_model lấy từ link
  https://huggingface.co/TheBloke/phi-2-GGUF/blob/main/phi-2.Q4_K_M.gguf
 
 đổi tên thành    ``` phi2_model.gguf``` và đưa vào folder    ```models ```
+
+
+
+# Cách chạy 
++ Cài đặt 
+   ```
+   pip install -r requirements.txt
+   ``` 
+
++ chạy backend
+   ```
+    cd D:smc
+    uvicorn backend.main:app --reload
+
+   ```
