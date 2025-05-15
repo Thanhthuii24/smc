@@ -7,6 +7,7 @@ pydantic==2.6.4
 pandas==1.5.3         
 openpyxl==3.1.2
 python-dotenv==1.0.1
+db-sqlite3
 
 # STT
 faster-whisper==1.0.1

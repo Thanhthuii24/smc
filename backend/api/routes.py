@@ -1,7 +1,19 @@
-from fastapi import APIRouter
-from backend.services import location, voucher_engine, rag_service, recommender
+from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from contextlib import asynccontextmanager
+import os
+import uuid
+import shutil
+from backend.services import location, voucher_engine, rag_service, recommender, stt_service, tts_service
 
 router = APIRouter()
+
+# Define the target directory where .wav files are saved
+TARGET_DIRECTORY = "/home/konabi/Documents/demo/smc/backend/voice"
+
+if not os.path.exists(TARGET_DIRECTORY):
+    os.makedirs(TARGET_DIRECTORY)
 
 @router.get("/location/{product}")
 def get_location(product: str):
@@ -13,8 +25,143 @@ def get_vouchers():
 
 @router.get("/suggest/{product}")
 def suggest(product: str):
-    return recommender.recommend_products(product)
+    """
+    Generate product suggestions for each word in the input string.
+    Args:
+        product (str): Input string (e.g., transcribed text or product name).
+    Returns:
+        dict: Dictionary with words as keys and lists of suggested products as values.
+    """
+    words = [word.strip().lower() for word in product.split() if word.strip()]
+    suggestions = {}
+    
+    for word in words:
+        try:
+
+            products = recommender.recommend_products(word)
+            if products:  
+                suggestions[word] = list(set(products))
+        except Exception as e:
+            print(f"Warning: Failed to get suggestions for '{word}': {str(e)}")
+            suggestions[word] = []
+    
+    return suggestions
 
 @router.get("/ask/")
 def ask_llm(q: str):
     return {"answer": rag_service.query_phi2(q)}
+
+@router.get("/vouchers/search")
+async def search_vouchers_endpoint(query: str):
+    """
+    Search vouchers by name or category.
+    Args:
+        query (str): The search term to match against voucher name or category.
+    Returns:
+        list: A list of matching vouchers.
+    """
+    try:
+        vouchers = voucher_engine.search_vouchers(query)
+        if not vouchers:
+            return {"message": "No vouchers found", "vouchers": []}
+        return vouchers
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error searching vouchers: {str(e)}")
+
+@router.post("/voice_search/")
+async def voice_search(audio: UploadFile = File(...)):
+    """
+    Process a .wav audio file through STT, LLM, and TTS to generate a response.
+    Args:
+        audio (UploadFile): The input .wav audio file.
+    Returns:
+        dict: Contains transcribed text, LLM response, and UUID of the output .wav file.
+    """
+    # Validate file extension
+    if not audio.filename or not audio.filename.lower().endswith('.wav'):
+        raise HTTPException(status_code=400, detail="Only .wav files are supported")
+
+
+    audio_path = f"temp_{uuid.uuid4()}.wav"
+    output_uuid = uuid.uuid4()
+    output_audio_path = f"output_{output_uuid}.wav"
+
+
+    try:
+        with open(audio_path, "wb") as f:
+            f.write(await audio.read())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error saving audio file: {str(e)}")
+    try:
+        text = stt_service.transcribe_audio(audio_path)
+        if not text:
+            raise HTTPException(status_code=400, detail="Không thể nhận diện giọng nói")
+
+        llm_response = rag_service.query_phi2(f"Tìm kiếm: {text}")
+        if not llm_response:
+            raise HTTPException(status_code=500, detail="Không nhận được phản hồi từ LLM")
+
+        try:
+            tts_service.speak(llm_response, output_audio_path)
+            if not os.path.exists(output_audio_path):
+                raise HTTPException(status_code=500, detail="Failed to generate output audio")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error generating audio: {str(e)}")
+
+        destination_path = os.path.join(TARGET_DIRECTORY, f"output_{output_uuid}.wav")
+        try:
+            shutil.move(output_audio_path, destination_path)
+            print(f"File moved to {destination_path}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error moving file: {str(e)}")
+
+        # Return response with UUID
+        return {
+            "transcribed_text": text,
+            "llm_response": llm_response,
+            "audio_response": str(output_uuid)
+        }
+    finally:
+        if os.path.exists(audio_path):
+            try:
+                os.remove(audio_path)
+            except Exception as e:
+                print(f"Warning: Failed to delete temporary file {audio_path}: {str(e)}")
+
+@router.get("/audio/{filename}")
+async def get_audio(filename: str):
+    """
+    Serve the output .wav file from the target directory.
+    Args:
+        filename (str): The UUID of the audio file.
+    Returns:
+        FileResponse: The audio file.
+    """
+    file_path = os.path.join(TARGET_DIRECTORY, f"output_{filename}.wav")
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Audio file not found")
+
+    try:
+        return FileResponse(file_path, media_type="audio/wav", filename=f"output_{filename}.wav")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error serving audio file: {str(e)}")
+
+@router.delete("/audio/{filename}")
+async def delete_audio(filename: str):
+    """
+    Delete the specified .wav file from the target directory.
+    Args:
+        filename (str): The UUID of the audio file.
+    Returns:
+        dict: Confirmation message.
+    """
+    file_path = os.path.join(TARGET_DIRECTORY, f"output_{filename}.wav")
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Audio file not found")
+
+    try:
+        os.remove(file_path)
+        print(f"Deleted file: {file_path}")
+        return {"message": f"Audio file output_{filename}.wav deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting audio file: {str(e)}")
