@@ -12,8 +12,8 @@ db-sqlite3
 # STT
 faster-whisper==1.0.1
 
-# LLM
-llama-cpp-python==0.2.24
+# LLM và xử lý
+llama-cpp-python==0.2.56
 
 # TTS
 TTS==0.22.0
