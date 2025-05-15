@@ -1,6 +1,9 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Logo from "./assets/logo.png";
+import SearchIcon from "./assets/search.png";
+import PromotionIcon from "./assets/promotion.png";
+import MapIcon from "./assets/map.png";
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
@@ -24,21 +27,42 @@ const Profile: React.FC = () => {
         <div className="d-flex justify-content-center gap-5">
           <div
             className="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center cursor-pointer"
-            style={{ width: "150px", height: "150px" }}
+            style={{
+              backgroundImage: `url(${SearchIcon})`,
+              backgroundSize: "cover", // hoặc 'contain'
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center",
+              width: "150px",
+              height: "150px",
+            }}
             onClick={() => navigate("/search")}
           >
             <i className="bi bi-search" style={{ fontSize: "50px" }}></i>
           </div>
           <div
             className="rounded-circle bg-success text-white d-flex justify-content-center align-items-center cursor-pointer"
-            style={{ width: "150px", height: "150px" }}
+            style={{
+              backgroundImage: `url(${PromotionIcon})`,
+              backgroundSize: "cover",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center",
+              width: "150px",
+              height: "150px",
+            }}
             onClick={() => navigate("/promotion")}
           >
             <i className="bi bi-gift" style={{ fontSize: "50px" }}></i>
           </div>
           <div
             className="rounded-circle bg-danger text-white d-flex justify-content-center align-items-center cursor-pointer"
-            style={{ width: "150px", height: "150px" }}
+            style={{
+              backgroundImage: `url(${MapIcon})`,
+              backgroundSize: "cover",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center",
+              width: "150px",
+              height: "150px",
+            }}
             onClick={() => navigate("/map")}
           >
             <i className="bi bi-map" style={{ fontSize: "50px" }}></i>
