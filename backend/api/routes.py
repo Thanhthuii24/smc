@@ -5,8 +5,7 @@ import os
 import uuid
 import shutil
 from backend.services import location, voucher_engine, rag_service, recommender, stt_service, tts_service
-from backend.schemas import QueryRequest, QueryResponse
-
+from backend.api.schemas import QueryRequest, QueryResponse
 from backend.services import (
     location,
     voucher_engine,
@@ -19,7 +18,7 @@ from backend.services import (
 router = APIRouter()
 
 # Define the target directory where .wav files are saved
-TARGET_DIRECTORY = "/home/konabi/Documents/demo/smc/backend/voice"
+TARGET_DIRECTORY = "smc/backend/voice"
 os.makedirs(TARGET_DIRECTORY, exist_ok=True)
 
 @router.get("/location/{product}")

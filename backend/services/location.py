@@ -19,3 +19,4 @@ def load_excel_to_sqlite():
             print(f"Synced {file} → table `{table_name}`")
 
     conn.close()
+

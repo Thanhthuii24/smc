@@ -30,14 +30,21 @@ def query_with_context(user_question: str) -> str:
 Bạn là trợ lý thông minh trong siêu thị.
 Câu hỏi: "{user_question}"
 Thông tin sản phẩm trong hệ thống: {context}
-Trả lời một cách ngắn gọn, rõ ràng với tên sản phẩm và zone cụ thể.
+
     """
 
     output = llm(prompt, max_tokens=256, stop=["</s>"])
     return output["choices"][0]["text"].strip()
 
 def extract_keyword(text):
-    # Đơn giản hóa: lấy từ sau "tìm"
     import re
-    match = re.search(r'tìm\s+(.*?)\s+(ở|tại|zone|gian|khu)?', text.lower())
-    return match.group(1) if match else text
+    text = text.lower()
+
+    # Tìm từ khóa sau các động từ thường dùng
+    match = re.search(r'(tìm|mua|kiếm|cần|ở|đâu)\s+(.*?)(\s+(ở|tại|zone|gian|khu)|\?|$)', text)
+    if match:
+        return match.group(2).strip()
+    
+    # Nếu không match, fallback: chỉ giữ lại các danh từ
+    fallback = text.replace("tôi", "").replace("muốn", "").replace("mua", "").replace("ở đâu", "")
+    return fallback.strip()
