@@ -20,7 +20,7 @@ def load_excel_to_sqlite():
             file_path = os.path.join(EXCEL_DIR, file)
             table_name = os.path.splitext(file)[0]
 
-            df = pd.read_excel(file_path)
+            df = pd.read_excel(file_path, engine="openpyxl")
             df.to_sql(table_name, conn, if_exists='replace', index=False)
             print(f"Synced {file} → table `{table_name}`")
 
