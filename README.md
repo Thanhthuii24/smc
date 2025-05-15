@@ -78,6 +78,17 @@ https://huggingface.co/TheBloke/phi-2-GGUF/blob/main/phi-2.Q4_K_M.gguf
 # Fontend + cài nodejs và npm
 
 - cài đặt
+
+  ```
   cd /smc/Fontend
-  npm install "cài"
-- chạy thực hiện: npm run dev
+
+  ```
+
+  ```
+  npm install
+  ```
+
+- chạy thực hiện:
+  ```
+  npm run dev
+  ```
