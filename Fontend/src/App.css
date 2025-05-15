@@ -1,0 +1,19 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+nav {
+  background-color: #ffffff;
+  border-top: 1px solid #e5e7eb;
+}
+
+nav a {
+  color: #4b5563;
+  text-decoration: none;
+}
+
+nav a.active {
+  color: #3b82f6;
+}

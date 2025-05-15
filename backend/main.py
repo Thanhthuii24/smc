@@ -1,9 +1,18 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware 
 from backend.api.routes import router
 from backend.services.location import load_excel_to_sqlite
 from backend.services.voucher_engine import load_voucher_to_sqlite
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  
+    allow_credentials=True,
+    allow_methods=["*"], 
+    allow_headers=["*"],  
+)
 
 @app.on_event("startup")
 def init_services():
