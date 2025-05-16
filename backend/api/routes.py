@@ -15,11 +15,15 @@ from backend.services import (
     tts_service
 )
 from backend.api.schemas import QueryRequest, QueryResponse
+from backend.services import location, voucher_engine, rag_service, recommender, stt_service, tts_service
+from backend.api.schemas import QueryRequest, QueryResponse
 
 router = APIRouter()
 
 # Đường dẫn lưu file âm thanh đầu ra
 TARGET_DIRECTORY = "smc/backend/voice"
+# Define the target directory where .wav files are saved
+TARGET_DIRECTORY = "/home/konabi/Documents/demo/smc/backend/voice"
 os.makedirs(TARGET_DIRECTORY, exist_ok=True)
 
 # ========== 1. LOCATION ==========
@@ -84,11 +88,13 @@ async def voice_search(audio: UploadFile = File(...)):
 
         text = stt_service.transcribe_audio(audio_path)
         if not text:
-            raise HTTPException(status_code=400, detail="Không thể nhận diện giọng nói")
+            raise HTTPException(status_code=400, detail="Could not recognize speech")
 
         llm_response = rag_service.query_with_context(text)
+        # Use the new RAG function
+        llm_response = rag_service.query_with_context(f"Search: {text}")
         if not llm_response:
-            raise HTTPException(status_code=500, detail="Không nhận được phản hồi từ LLM")
+            raise HTTPException(status_code=500, detail="No response received from LLM")
 
         tts_service.speak(llm_response, output_audio_path)
 
@@ -130,3 +136,12 @@ async def delete_audio(filename: str):
         return {"message": f"Audio file output_{filename}.wav deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting audio file: {str(e)}")
+
+
+@router.post("/ask/", response_model=QueryResponse)
+def ask_llm(request: QueryRequest):
+    try:
+        answer = rag_service.query_with_context(request.question)
+        return {"answer": answer}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"LLM error: {str(e)}")
