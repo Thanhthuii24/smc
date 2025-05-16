@@ -20,3 +20,20 @@ def load_excel_to_sqlite():
 
     conn.close()
 
+
+def find_product_location(product_name: str):
+    conn = sqlite3.connect("data/location.db")
+    cursor = conn.cursor()
+    query = "SELECT * FROM location WHERE product_name LIKE ?"
+    cursor.execute(query, ('%' + product_name + '%',))
+    result = cursor.fetchone()
+    conn.close()
+    if result:
+        return {
+            "product_name": result[0],
+            "category": result[1],
+            "x": result[2],
+            "y": result[3],
+            "zone": result[4]
+        }
+    return None

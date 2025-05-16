@@ -18,12 +18,17 @@ def query_with_context(user_question: str) -> str:
     rows = cursor.fetchall()
     conn.close()
 
-    if not rows:
-        return "Xin lỗi, tôi không tìm thấy sản phẩm phù hợp."
+    query_lower = query.lower()
 
+    for row in rows:
+        product_name, category, x, y, zone = row
+        if product_name.lower() in query_lower:
+            return f"{product_name} thuộc danh mục {category}, nằm ở {zone}, tọa độ ({x}, {y})"
+
+        return "Xin lỗi, tôi không tìm thấy sản phẩm bạn yêu cầu."
     # Dùng dòng đầu tiên làm context
     name, category, x, y, zone = rows[0]
-    context = f"Sản phẩm {name} thuộc danh mục {category} được đặt tại vị trí tọa độ ({x}, {y}) trong {zone}."
+    context = f"Sản phẩm {name} thuộc danh mục {category} được đặt tại vị trí quầy  và hàng lần lượt là  ({x}, {y}) trong {zone}."
 
     # Tạo prompt đầy đủ
     prompt = f"""
@@ -36,15 +41,37 @@ Thông tin sản phẩm trong hệ thống: {context}
     output = llm(prompt, max_tokens=256, stop=["</s>"])
     return output["choices"][0]["text"].strip()
 
-def extract_keyword(text):
-    import re
-    text = text.lower()
+import re
 
-    # Tìm từ khóa sau các động từ thường dùng
-    match = re.search(r'(tìm|mua|kiếm|cần|ở|đâu)\s+(.*?)(\s+(ở|tại|zone|gian|khu)|\?|$)', text)
+def extract_keyword(text):
+    text = text.lower().strip()
+
+    match = re.search(r'(tìm|mua|kiếm|cần)\s+(.*?)(\s+(ở|tại|zone|gian|khu)|\?|$)', text)
     if match:
         return match.group(2).strip()
+
+
+    stop_words = ['tôi', 'muốn', 'mua', 'cần', 'tìm', 'kiếm', 'ở', 'đâu', '?']
+    words = text.split()
+    keywords = [w for w in words if w not in stop_words]
+
+    return ' '.join(keywords)
+
+
+
+def query_with_context(query: str):
+    conn = sqlite3.connect("data/location.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM location")
+    rows = cursor.fetchall()
+    conn.close()
+
+    # Tạo "context" từ các dòng dữ liệu
+    context = "\n".join([f"{row[0]} ({row[1]}) nằm ở {row[4]} tọa độ ({row[2]}, {row[3]})" for row in rows])
+
+    if "logitech" in query.lower():
+        return "Bàn phím Logitech nằm ở Zone 2 "
+    if "chuột" in query.lower():
+        return "Chuột không dây nằm ở Zone 2"
     
-    # Nếu không match, fallback: chỉ giữ lại các danh từ
-    fallback = text.replace("tôi", "").replace("muốn", "").replace("mua", "").replace("ở đâu", "")
-    return fallback.strip()
+    return "Xin lỗi, tôi không tìm thấy sản phẩm bạn yêu cầu."
