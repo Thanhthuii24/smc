@@ -6,19 +6,11 @@ import uuid
 import shutil
 from backend.services import location, voucher_engine, rag_service, recommender, stt_service, tts_service
 from backend.api.schemas import QueryRequest, QueryResponse
-from backend.services import (
-    location,
-    voucher_engine,
-    rag_service,
-    recommender,
-    stt_service,
-    tts_service
-)
 
 router = APIRouter()
 
 # Define the target directory where .wav files are saved
-TARGET_DIRECTORY = "smc/backend/voice"
+TARGET_DIRECTORY = "/home/konabi/Documents/demo/smc/backend/voice"
 os.makedirs(TARGET_DIRECTORY, exist_ok=True)
 
 @router.get("/location/{product}")
@@ -87,12 +79,12 @@ async def voice_search(audio: UploadFile = File(...)):
     try:
         text = stt_service.transcribe_audio(audio_path)
         if not text:
-            raise HTTPException(status_code=400, detail="Không thể nhận diện giọng nói")
+            raise HTTPException(status_code=400, detail="Could not recognize speech")
 
-        # Sử dụng hàm RAG mới
-        llm_response = rag_service.query_with_context(f"Tìm kiếm: {text}")
+        # Use the new RAG function
+        llm_response = rag_service.query_with_context(f"Search: {text}")
         if not llm_response:
-            raise HTTPException(status_code=500, detail="Không nhận được phản hồi từ LLM")
+            raise HTTPException(status_code=500, detail="No response received from LLM")
 
         try:
             tts_service.speak(llm_response, output_audio_path)
@@ -145,8 +137,6 @@ async def delete_audio(filename: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting audio file: {str(e)}")
 
-
-
 @router.post("/ask/", response_model=QueryResponse)
 def ask_llm(request: QueryRequest):
     try:
@@ -154,37 +144,3 @@ def ask_llm(request: QueryRequest):
         return {"answer": answer}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"LLM error: {str(e)}")
-
-
-@router.post("/voice_search/", response_model=QueryResponse)
-async def voice_search(audio: UploadFile = File(...)):
-    if not audio.filename or not audio.filename.lower().endswith('.wav'):
-        raise HTTPException(status_code=400, detail="Only .wav files are supported")
-
-    audio_path = f"temp_{uuid.uuid4()}.wav"
-    output_uuid = uuid.uuid4()
-    output_audio_path = f"output_{output_uuid}.wav"
-    try:
-        with open(audio_path, "wb") as f:
-            f.write(await audio.read())
-
-        text = stt_service.transcribe_audio(audio_path)
-        if not text:
-            raise HTTPException(status_code=400, detail="Không thể nhận diện giọng nói")
-
-        llm_response = rag_service.query_with_context(text)
-        if not llm_response:
-            raise HTTPException(status_code=500, detail="Không nhận được phản hồi từ LLM")
-
-        tts_service.speak(llm_response, output_audio_path)
-        shutil.move(output_audio_path, os.path.join(TARGET_DIRECTORY, f"output_{output_uuid}.wav"))
-
-        return {
-            "transcribed_text": text,
-            "llm_response": llm_response,
-            "audio_response": str(output_uuid)
-        }
-
-    finally:
-        if os.path.exists(audio_path):
-            os.remove(audio_path)
