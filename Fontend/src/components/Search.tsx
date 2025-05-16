@@ -16,12 +16,14 @@ const VoiceSearch: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<VoiceSearchResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
   const [canPlayAudio, setCanPlayAudio] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestions>({});
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const sourceRef = useRef<AbortController | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Check when audio is ready to play
   useEffect(() => {
@@ -53,11 +55,17 @@ const VoiceSearch: React.FC = () => {
     }
   }, [result, canPlayAudio]);
 
-  // Cancel axios request when component unmounts
+  // Cancel axios request and stop recording when component unmounts
   useEffect(() => {
     return () => {
       if (sourceRef.current) {
         sourceRef.current.abort();
+      }
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state !== "inactive"
+      ) {
+        mediaRecorderRef.current.stop();
       }
     };
   }, []);
@@ -96,27 +104,54 @@ const VoiceSearch: React.FC = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0] || null;
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream, {
+        mimeType: "audio/webm",
+      });
+      audioChunksRef.current = [];
 
-    if (selectedFile) {
-      if (
-        selectedFile.type === "audio/wav" &&
-        selectedFile.size <= 10 * 1024 * 1024
-      ) {
-        setFile(selectedFile);
-        setError(null);
-        setResult(null);
-        setCanPlayAudio(false);
-        setSuggestions({});
-      } else {
-        setFile(null);
-        setError(
-          selectedFile.type !== "audio/wav"
-            ? "Please select a .wav file."
-            : "File is too large (max 10MB)."
-        );
-      }
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: "audio/wav",
+        });
+        await sendAudioToServer(audioBlob, "recording.wav");
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+      setError(null);
+      setResult(null);
+      setCanPlayAudio(false);
+      setSuggestions({});
+    } catch (err: any) {
+      setError("Unable to access microphone: " + err.message);
+    }
+  };
+
+  const stopRecording = () => {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const handleMicClick = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
     }
   };
 
@@ -174,17 +209,7 @@ const VoiceSearch: React.FC = () => {
     }
   };
 
-  const handleFileUpload = async () => {
-    if (!file) {
-      setError("Please select a .wav file before uploading.");
-      return;
-    }
-
-    await sendAudioToServer(file, file.name);
-  };
-
   const resetResults = async () => {
-    // Delete the audio file from the server if it exists
     if (result?.audio_response) {
       try {
         await axios.delete(
@@ -196,10 +221,8 @@ const VoiceSearch: React.FC = () => {
       }
     }
 
-    // Clear local state
     setResult(null);
     setError(null);
-    setFile(null);
     setCanPlayAudio(false);
     setSuggestions({});
   };
@@ -243,21 +266,22 @@ const VoiceSearch: React.FC = () => {
           <div className="card-body text-center">
             <h2 className="mb-4">Voice Product Search</h2>
 
-            {/* File Upload */}
+            {/* Microphone Button */}
             <div className="mb-3">
-              <input
-                type="file"
-                className="form-control mb-2"
-                accept="audio/wav"
-                onChange={handleFileChange}
-                disabled={loading}
-              />
               <button
-                className="btn btn-primary"
-                onClick={handleFileUpload}
-                disabled={!file || loading}
+                className={`btn ${
+                  isRecording ? "btn-danger" : "btn-primary"
+                } rounded-circle p-3`}
+                onClick={handleMicClick}
+                disabled={loading}
+                style={{ width: "60px", height: "60px" }}
+                title={isRecording ? "Stop Recording" : "Start Recording"}
               >
-                Upload and Process
+                <i
+                  className={`fas fa-microphone ${
+                    isRecording ? "fa-stop" : ""
+                  }`}
+                ></i>
               </button>
             </div>
 
